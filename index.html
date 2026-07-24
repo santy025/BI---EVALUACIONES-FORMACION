@@ -659,7 +659,8 @@ td.tm{color:var(--mid);font-size:10px}
   <div class="sh"><div class="se">Top Performance</div><div class="st2">Top Talent</div><div class="ss">Los mejores de la organización por categoría</div></div>
   <div class="pts">
     <div class="pt on" onclick="swDT('tt','org',this)">Nivel Organizacional</div>
-    <div class="pt" onclick="swDT('tt','tcli',this)">Por Cliente</div>
+    <div class="pt" onclick="swDT('tt','tcli',this)">Campo — Por Cliente</div>
+    <div class="pt" onclick="swDT('tt','tlid',this)">Líderes — Por Cliente</div>
     <div class="pt" onclick="swDT('tt','tarea',this)">Por Área</div>
   </div>
   <div id="tt-org" class="dt on">
@@ -711,6 +712,28 @@ td.tm{color:var(--mid);font-size:10px}
     <div style="height:14px"></div>
     <div class="tc"><div class="tsx"><table id="tbl-cli"></table></div></div>
   </div>
+  <div id="tt-tlid" class="dt">
+    <div class="tt-ctrl">
+      <label>Cliente</label>
+      <select id="tt-lid-cli" class="ttsel" onchange="rTLid()"></select>
+      <div style="margin-left:8px">
+        <div class="pts" style="margin-bottom:0" id="lid-src-tabs">
+          <div class="pt on" onclick="swLidSrc('cal',this)" style="font-size:9px;padding:5px 11px">Vista Equipo</div>
+          <div class="pt" onclick="swLidSrc('kal',this)" style="font-size:9px;padding:5px 11px">Vista KAM's</div>
+        </div>
+      </div>
+      <button class="expb" onclick="expTT('tlid-bg',document.getElementById('tt-lid-cli').value+'_lideres_top.png')">↓ Exportar PNG</button>
+    </div>
+    <div class="tt-bg" id="tlid-bg"><div class="tt-g1"></div><div class="tt-g2"></div>
+      <div class="tt-hd">
+        <div><div class="tt-ht" id="tlid-ht">Top 5 Líderes — Cliente</div><div class="tt-hs" id="tlid-hs">Mejor evaluados por su equipo en este cliente</div></div>
+      </div>
+      <div class="pod" id="pod-tlid"></div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="tc"><div class="tsx"><table id="tbl-tlid"></table></div></div>
+  </div>
+
   <div id="tt-tarea" class="dt">
     <div class="tt-ctrl"><label>Área</label><select id="tt-area" class="ttsel" onchange="rTArea()"></select>
       <button class="expb" onclick="expTT('area-bg',document.getElementById('tt-area').value+'_top.png')">↓ Exportar PNG</button></div>
@@ -1101,8 +1124,9 @@ function buildTT(){
   buildPod(topK,'pod-ktt',r=>r.k,null,r=>[r.d,r.co,r.ge,r.tc],'ktt',CAT_NAMES_K);
 
   D.clientes.forEach(c=>document.getElementById('tt-cli').add(new Option(c,c)));
+  D.clientes.forEach(c=>document.getElementById('tt-lid-cli').add(new Option(c,c)));
   D.areas.forEach(a=>document.getElementById('tt-area').add(new Option(a,a)));
-  rTCli();rTArea();
+  rTCli();rTArea();rTLid();
 }
 
 function rTCli(){
@@ -1319,6 +1343,30 @@ function openAbM(r){if(!r)return;
 }
 
 function openC(i){openCR(window._srtC[i])}
+// TOP TALENT — LÍDERES POR CLIENTE
+let _lidSrc='cal'; // 'cal' o 'kal'
+
+function swLidSrc(src,pill){
+  _lidSrc=src;
+  document.getElementById('lid-src-tabs').querySelectorAll('.pt').forEach(p=>p.classList.remove('on'));
+  pill.classList.add('on');
+  const hs=document.getElementById('tlid-hs');
+  if(hs)hs.textContent=src==='cal'?'Mejor evaluados por su equipo en este cliente':'Mejor evaluados por los KAM’s en este cliente';
+  rTLid();
+}
+
+function rTLid(){
+  const cli=document.getElementById('tt-lid-cli').value;
+  const src=_lidSrc;
+  const dataset=src==='cal'?D.cal:D.kal;
+  const rows=srt(dataset.filter(r=>r.c==cli),'p',-1);
+  const ht=document.getElementById('tlid-ht');
+  if(ht)ht.textContent='Top 5 Líderes — '+cli;
+  _pCbs['tlid']=(i)=>(src==='cal'?openCalM:openKalM)(rows[i]);
+  buildPod(rows,'pod-tlid',r=>r.l,r=>r.c,r=>[r.ac||r.or,r.co,r.ge,r.tc],'tlid',CAT_NAMES_L);
+  podTbl(rows,'tbl-tlid',[['Líder','l','tn'],['Cliente','c','']],(i)=>(src==='cal'?openCalM:openKalM)(rows[i]));
+}
+
 function rf(t){
   ({c:['fc-c','fc-l','fc-n','fc-ci'],cal:['fcal-c','fcal-n'],kal:['fkal-c','fkal-n'],lak:['flak-n'],ab:['fab-a','fab-n']}[t]||[]).forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
   ({c:rC,cal:rCal,kal:rKal,lak:rLak,ab:rAb}[t]||Function)();
