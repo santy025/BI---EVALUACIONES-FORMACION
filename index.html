@@ -563,7 +563,7 @@ td.tm{color:var(--mid);font-size:10px}
     <div class="fsp"></div>
     <span class="fl">Nivel</span>
     <select id="fc-n" class="fs" onchange="rC()">
-      <option value="">Todos</option><option>Alto</option><option>Superior</option><option>Bajo</option><option>Básico</option>
+      <option value="">Todos</option><option value="Alto">Superior</option><option value="Superior">Alto</option><option value="Bajo">Básico</option><option value="Básico">Bajo</option>
     </select>
     <div class="fsp"></div>
     <span class="fl">Ciudad</span><select id="fc-ci" class="fs" onchange="rC()"><option value="">Todas</option></select>
@@ -772,6 +772,13 @@ const clr=v=>v>=93?'#00D6CA':v>=86?'#0B9E63':v>=80?'#D97706':'#DC2626';
 const pc=v=>v>=93?'var(--t)':v>=86?'var(--green)':v>=80?'var(--amber)':'var(--red)';
 function lvc(nv){if(!nv)return'';const n=nv.toLowerCase();if(n.includes('alto')||n.includes('inspirador'))return'ba';if(n.includes('superior')||n.includes('eficaz'))return'bs';if(n.includes('bajo')||n.includes('mejorable'))return'bb';return'bba'}
 const bdg=nv=>`<span class="badge ${lvc(nv)}">${nv||'—'}</span>`;
+// Mapeo de niveles para Equipo en Campo (swap de etiquetas)
+const CAMPO_NV_MAP={'Alto':'Superior','Superior':'Alto','Bajo':'Básico','Básico':'Bajo'};
+const CAMPO_NV_BACK={'Superior':'Alto','Alto':'Superior','Básico':'Bajo','Bajo':'Básico'};
+function bdgC(nv){
+  const display=CAMPO_NV_MAP[nv]||nv||'—';
+  return`<span class="badge ${lvc(nv)}">${display}</span>`;
+}
 const bcc=v=>v==null?'<td class="tm">—</td>':`<td><div class="bcc"><div class="bct"><div class="bcf" style="width:${cl(v)}%;background:${clr(v)}"></div></div><span class="bcv" style="color:${pc(v)}">${v.toFixed(1)}%</span></div></td>`;
 const ini=n=>{if(!n)return'?';const p=n.trim().split(/\s+/);return(p[0][0]+(p[1]?p[1][0]:'')).toUpperCase()};
 const srt=(a,k,d)=>[...a].sort((x,y)=>{const av=x[k]??'',bv=y[k]??'';return typeof av==='string'?d*av.localeCompare(bv):d*((av??-Infinity)-(bv??-Infinity))});
@@ -879,6 +886,12 @@ function mkPag(wid,total,page,setter,all){
   w.innerHTML=`<span class="pi2">${(page-1)*PS+1}–${Math.min(page*PS,total)} de ${total}</span><div class="pb2">${b}</div>`;
 }
 
+function stRowC(rows,eid){
+  const p=avg(rows.map(r=>r.p).filter(x=>x!=null));
+  const by={};rows.forEach(r=>{const k=r.nv||'';by[k]=(by[k]||0)+1;});
+  const pills=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<div class="sp">${bdgC(k)} <strong>${n}</strong></div>`).join('');
+  document.getElementById(eid).innerHTML=`<div class="sp">Total <strong>${rows.length}</strong></div><div class="sp">Promedio <strong>${p.toFixed(1)}%</strong></div>${pills}`;
+}
 function stRow(rows,eid){
   const p=avg(rows.map(r=>r.p).filter(x=>x!=null));
   const by={};rows.forEach(r=>{const k=r.nv||'';by[k]=(by[k]||0)+1;});
@@ -922,7 +935,7 @@ function rC(){
   let rows=D.campo;
   if(cli)rows=rows.filter(r=>r.c==cli);if(lid)rows=rows.filter(r=>r.l==lid);
   if(nv)rows=rows.filter(r=>r.nv==nv);if(ci)rows=rows.filter(r=>r.ci==ci);
-  _C=rows;ST.c.p=1;stRow(rows,'st-c');catC(rows,[['Ejecución','ej'],['Conocimiento','co'],['Habilidades','ha'],['Captura','ca']],'cc-c');rCTable();
+  _C=rows;ST.c.p=1;stRowC(rows,'st-c');catC(rows,[['Ejecución','ej'],['Conocimiento','co'],['Habilidades','ha'],['Captura','ca']],'cc-c');rCTable();
 }
 function rCTable(){
   const sorted=srt(_C,_sC.k,_sC.d);window._srtC=sorted;
@@ -940,7 +953,7 @@ function rCTable(){
       <td class="tm">${r.g||''}</td><td class="tm">${r.ci||''}</td>
       ${bcc(r.ej)}${bcc(r.co)}${bcc(r.ha)}${bcc(r.ca)}
       <td class="tm" style="text-align:center">${r.cnt||1}</td>
-      ${bcc(r.p)}<td>${bdg(r.nv)}</td>
+      ${bcc(r.p)}<td>${bdgC(r.nv)}</td>
     </tr>`;
   }).join('')}</tbody>`;
   mkPag('pw-c',sorted.length,pg,'setPgC',all);
@@ -1082,13 +1095,13 @@ function buildPod(rows,pid,nameFn,cliFn,_barsFn,cbKey,_catNames){
 }
 
 
-function podTbl(rows,tid,cols,cbFn){
+function podTbl(rows,tid,cols,cbFn,useCampoNv){
   document.getElementById(tid).innerHTML=`<thead><tr>
     <th>#</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}<th>% Total</th><th>Nivel</th>
   </tr></thead><tbody>${rows.slice(0,15).map((r,i)=>`<tr onclick="(${cbFn.toString()})(${i})">
     <td style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:12px;color:${i<3?'var(--gd)':'var(--mid)'}">${i+1}</td>
     ${cols.map(c=>`<td class="${c[2]||''}">${r[c[1]]||''}</td>`).join('')}
-    ${bcc(r.p)}<td>${bdg(r.nv)}</td>
+    ${bcc(r.p)}<td>${useCampoNv?bdgC(r.nv):bdg(r.nv)}</td>
   </tr>`).join('')}</tbody>`;
 }
 
@@ -1100,7 +1113,7 @@ function buildTT(){
 
   _pCbs['oc']=(i)=>openCR(topC[i]);
   buildPod(topC,'pod-oc',r=>r.n,r=>r.c,r=>[r.ej,r.co,r.ha,r.ca],'oc',CAT_NAMES_C);
-  podTbl(topC,'tbl-oc',[['Colaborador','n','tn'],['Cliente','c',''],['Cargo','g','tm'],['Ciudad','ci','tm']],(i)=>openCR(topC[i]));
+  podTbl(topC,'tbl-oc',[['Colaborador','n','tn'],['Cliente','c',''],['Cargo','g','tm'],['Ciudad','ci','tm']],(i)=>openCR(topC[i]),true);
 
   _pCbs['ol']=(i)=>openCalM(topL[i]);
   buildPod(topL,'pod-ol',r=>r.l,r=>r.c,r=>[r.ac,r.co,r.ge,r.tc],'ol',CAT_NAMES_L);
@@ -1136,7 +1149,7 @@ function rTCli(){
   document.getElementById('cli-ht').textContent='Top 5 · '+cli;
   _pCbs['cli']=(i)=>openCR(rows[i]);
   buildPod(rows,'pod-cli',r=>r.n,r=>r.c,r=>[r.ej,r.co,r.ha,r.ca],'cli',CAT_NAMES_C);
-  podTbl(rows,'tbl-cli',[['Colaborador','n','tn'],['Cargo','g','tm'],['Ciudad','ci','tm']],(i)=>openCR(rows[i]));
+  podTbl(rows,'tbl-cli',[['Colaborador','n','tn'],['Cargo','g','tm'],['Ciudad','ci','tm']],(i)=>openCR(rows[i]),true);
 }
 function rTArea(){
   const area=document.getElementById('tt-area').value;
@@ -1295,7 +1308,7 @@ function cmH(coms,pk,mk){
 function openCR(r){if(!r)return;
   const cats=[['Ejecución',r.ej],['Conocimiento',r.co],['Habilidades',r.ha],['Captura',r.ca]];
   openM('Colaborador · Campo',r.n,[r.g,r.ci,'Cliente: '+r.c].filter(Boolean).join(' · '),
-    bdg(r.nv)+`<span style="margin-left:7px;font-size:10px;color:var(--mid)">${r.cnt||1} eval(s)</span>
+    bdgC(r.nv)+`<span style="margin-left:7px;font-size:10px;color:var(--mid)">${r.cnt||1} eval(s)</span>
     <div style="height:12px"></div><div class="mt">Desempeño por categoría</div>
     ${scH(cats)}${cmpH(cats,GA_C)}${rdH()}`);
   dRd(cats.map(c=>c[0]),cats.map(c=>c[1]||0));
